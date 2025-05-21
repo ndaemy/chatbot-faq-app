@@ -5,17 +5,29 @@ import { useState } from 'react';
 export default function ChatPage() {
   const [messages, setMessages] = useState<{ role: 'user' | 'bot'; content: string }[]>([]);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSend = async () => {
     if (!input.trim()) return;
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: input })
-    });
-    const data = await res.json();
-    setMessages([...messages, { role: 'user', content: input }, { role: 'bot', content: data.answer }]);
-    setInput('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: input }),
+      });
+      const data = await res.json();
+      setMessages((prev) => [
+        ...prev,
+        { role: 'user', content: input },
+        { role: 'bot', content: data.answer },
+      ]);
+      setInput('');
+    } catch (err) {
+      console.error('에러:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,13 +44,19 @@ export default function ChatPage() {
           className="border rounded w-full p-2"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+              handleSend();
+            }
+          }}
           placeholder="무엇이 궁금하신가요?"
         />
         <button
-          className="bg-blue-500 text-white rounded px-4"
+          className="bg-blue-500 text-white rounded px-4 py-2 text-sm whitespace-nowrap min-w-[90px] disabled:opacity-50"
           onClick={handleSend}
+          disabled={loading}
         >
-          전송
+          {loading ? '전송 중...' : '전송'}
         </button>
       </div>
     </div>
